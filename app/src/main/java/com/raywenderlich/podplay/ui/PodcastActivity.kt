@@ -20,6 +20,7 @@ import com.raywenderlich.podplay.databinding.ActivityPodcastBinding
 import com.raywenderlich.podplay.repository.ItunesRepo
 import com.raywenderlich.podplay.repository.PodcastRepo
 import com.raywenderlich.podplay.service.ItunesService
+import com.raywenderlich.podplay.service.RssFeedService
 import com.raywenderlich.podplay.viewmodel.PodcastViewModel
 import com.raywenderlich.podplay.viewmodel.SearchViewModel
 import kotlinx.coroutines.Dispatchers
@@ -30,18 +31,10 @@ import kotlinx.coroutines.withContext
 class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
 
     private val searchViewModel by viewModels<SearchViewModel>()
-
-    private lateinit var podcastListAdapter: PodcastListAdapter
-
     private val podcastViewModel by viewModels<PodcastViewModel>()
-
-
-    private lateinit var databinding: ActivityPodcastBinding
-
+    private lateinit var podcastListAdapter: PodcastListAdapter
     private lateinit var searchMenuItem: MenuItem
-
-
-    // Initial setup
+    private lateinit var databinding: ActivityPodcastBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,11 +43,11 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
         setupToolbar()
         setupViewModels()
         updateControls()
+        createSubscription()
         handleIntent(intent)
         addBackStackListener()
     }
 
-    //
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val inflater = menuInflater
         inflater.inflate(R.menu.menu_search, menu)
@@ -76,31 +69,10 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
         return true
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleIntent(intent)
-    }
 
 
-    override fun onShowDetails(podcastSummaryViewData: SearchViewModel.PodcastSummaryViewData) {
 
-        val feedUrl = podcastSummaryViewData.feedUrl ?: return
-
-        showProgressBar()
-
-
-        val podcast = podcastViewModel.getPodcast(podcastSummaryViewData)
-        hideProgressBar()
-        if (podcast != null) {
-            showDetailsFragment()
-        } else {
-            showError("Error loading feed $feedUrl")
-        }
-    }
-
-
-    // Logic for search execution
+    // To perform search -  term is not hardcoded
     private fun performSearch(term: String) {
         showProgressBar()
         GlobalScope.launch {
@@ -113,6 +85,25 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
         }
     }
 
+    private fun createSubscription() {
+        podcastViewModel.podcastLiveData.observe(this, {
+            hideProgressBar()
+            if (it != null) {
+                showDetailsFragment()
+            } else {
+                showError("Error loading feed")
+            }
+        })
+    }
+
+
+
+    // Receives updated intent when search is done
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
 
 
     private fun handleIntent(intent: Intent) {
@@ -122,7 +113,6 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
         }
     }
 
-    // Initialize toolbar
     private fun setupToolbar() {
         setSupportActionBar(databinding.toolbar)
     }
@@ -130,10 +120,18 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
     private fun setupViewModels() {
         val service = ItunesService.instance
         searchViewModel.iTunesRepo = ItunesRepo(service)
-        podcastViewModel.podcastRepo = PodcastRepo()
+        podcastViewModel.podcastRepo = PodcastRepo(RssFeedService.instance)
     }
 
+    // Logic to implement ListAdapter Listener Interf
+    override fun onShowDetails(podcastSummaryViewData: SearchViewModel.PodcastSummaryViewData) {
+        podcastSummaryViewData.feedUrl?.let {
+            showProgressBar()
+            podcastViewModel.getPodcast(podcastSummaryViewData)
+        }
+    }
 
+    // Logic to check for  changes to the fragment
     private fun addBackStackListener() {
         supportFragmentManager.addOnBackStackChangedListener {
             if (supportFragmentManager.backStackEntryCount == 0) {
@@ -141,8 +139,7 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
             }
         }
     }
-
-    // databinding logic for updateControls , works with PodcastDetailsFragment
+    // Setup RecyclerView with PodcastListAdapter
     private fun updateControls() {
         databinding.podcastRecyclerView.setHasFixedSize(true)
 
@@ -157,17 +154,20 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
         databinding.podcastRecyclerView.adapter = podcastListAdapter
     }
 
-
+     // display the details fragment
     private fun showDetailsFragment() {
         val podcastDetailsFragment = createPodcastDetailsFragment()
 
-        supportFragmentManager.beginTransaction().add(R.id.podcastDetailsContainer,
-            podcastDetailsFragment, TAG_DETAILS_FRAGMENT).addToBackStack("DetailsFragment").commit()
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.podcastDetailsContainer, podcastDetailsFragment, TAG_DETAILS_FRAGMENT)
+            .addToBackStack("DetailsFragment")
+            .commit()
         databinding.podcastRecyclerView.visibility = View.INVISIBLE
         searchMenuItem.isVisible = false
     }
 
-    // Create podcast details fragment if not created , or use current if one is created already
+    // creates or uses existing fragment for PodPlayS
     private fun createPodcastDetailsFragment(): PodcastDetailsFragment {
         var podcastDetailsFragment = supportFragmentManager.findFragmentByTag(TAG_DETAILS_FRAGMENT) as PodcastDetailsFragment?
 
@@ -178,23 +178,19 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapterListener {
         return podcastDetailsFragment
     }
 
-    // Logic for showing progress bar
     private fun showProgressBar() {
         databinding.progressBar.visibility = View.VISIBLE
     }
 
-    // Logic for hiding progress bar
     private fun hideProgressBar() {
         databinding.progressBar.visibility = View.INVISIBLE
     }
 
-    // Error handling
     private fun showError(message: String) {
         AlertDialog.Builder(this).setMessage(message).setPositiveButton(getString(R.string.ok_button),
             null).create().show()
     }
 
-    // Companion object for PodcastActivity
     companion object {
         private const val TAG_DETAILS_FRAGMENT = "DetailsFragment"
     }

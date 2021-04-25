@@ -2,6 +2,7 @@ package com.raywenderlich.podplay.model
 
 import java.util.*
 
+// Data for single podcast episode
 data class Episode (
         var guid: String = "",
         var title: String = "",

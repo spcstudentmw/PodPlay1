@@ -11,6 +11,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.PodPlay">
+        android:usesCleartextTraffic="true">
         <activity android:name=".ui.PodcastActivity"
             android:launchMode="singleTop"
             android:theme="@style/Theme.PodPlay.NoActionBar">

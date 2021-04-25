@@ -10,24 +10,24 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
     var iTunesRepo: ItunesRepo? = null
 
-    //
+
+    // INline data class , holds data necessary for view
     data class PodcastSummaryViewData(
-            var name: String? = "",
-            var lastUpdated: String? = "",
-            var imageUrl: String? = "",
-            var feedUrl: String? = "")
+        var name: String? = "",
+        var lastUpdated: String? = "",
+        var imageUrl: String? = "",
+        var feedUrl: String? = "")
 
     private fun itunesPodcastToPodcastSummaryView(
-            itunesPodcast: PodcastResponse.ItunesPodcast):
+        itunesPodcast: PodcastResponse.ItunesPodcast):
             PodcastSummaryViewData {
         return PodcastSummaryViewData(
-                itunesPodcast.collectionCensoredName,
-                DateUtils.jsonDateToShortDate(itunesPodcast.releaseDate),
-                itunesPodcast.artworkUrl30,
-                itunesPodcast.feedUrl)
+            itunesPodcast.collectionCensoredName,
+            DateUtils.jsonDateToShortDate(itunesPodcast.releaseDate),
+            itunesPodcast.artworkUrl30,
+            itunesPodcast.feedUrl)
     }
 
-    //
     suspend fun searchPodcasts(term: String): List<PodcastSummaryViewData> {
         val results = iTunesRepo?.searchByTerm(term)
 

@@ -6,6 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
+// interface containing comp obj - returns interface instance as singleton
 interface ItunesService {
     @GET("/search?media=podcast")
     suspend fun searchPodcastByTerm(@Query("term") term: String): Response<PodcastResponse>
